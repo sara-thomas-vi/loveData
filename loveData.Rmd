@@ -1,0 +1,98 @@
+---
+title: "loveData"
+author: "Sara Thomas"
+date: "2026-11-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+play_by_play <- read_csv('play_by_play.csv')
+```
+
+```{r}
+# Converting qtr to a factor so that I can color them by quarter in the histogram
+play_by_play <- play_by_play %>% mutate(across(qtr, ~factor(., levels = c(0:9))))
+```
+
+```{r}
+# I only want to look at plays that made points
+play_by_play <- play_by_play %>% filter((scoring_play == TRUE) & ((qtr == 1) | (qtr == 2) | (qtr == 3) | (qtr == 4)))
+```
+
+```{r}
+play_by_play <- play_by_play %>% filter(!(score_value == 0))
+```
+
+```{r}
+colnames(play_by_play)[colnames(play_by_play) == "qtr"] <- "Quarter"
+```
+
+
+```{r}
+# fig.width = 6, fig.height = 2.5
+# for next time, facet wrap by whether or not the team lost? or by specific basket made (3 pointer, layup, etc)?
+play_by_play %>% mutate(score_value = case_when(score_value == 1 ~ "1 Pointer", score_value == 2 ~ "2 Pointer", score_value == 3 ~ "3 Pointer")) %>%
+  ggplot(aes(x = start_game_seconds_remaining, fill = Quarter)) +
+  geom_histogram(bins = 150) +
+  scale_fill_brewer(palette = "Blues") +
+  theme_minimal(paper = "#1E1E1E", ink = "white", accent = "#4fc3f7") +
+  ggtitle("Distribution of Scoring Across Quarters by Points") +
+  facet_wrap(~ score_value) +
+  theme(legend.position = "bottom") +
+  xlab("Seconds Remaining in Game") +
+  ylab("Count")
+
+ggsave("loveDataPlotDarkMode.png", width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+pointsTable <- play_by_play %>% group_by(game_id) %>% dplyr::summarize(total_points = sum(score_value), total_1 = sum(score_value == 1), total_2 = sum(score_value == 2), total_3 = sum(score_value == 3), avg_1 = (total_1 / (total_1 + total_2 + total_3)), avg_2 = ((total_2 * 2)/ (total_1 + total_2 + total_3)), avg_3 = ((total_3 * 3)/ (total_1 + total_2 + total_3)))
+```
+
+```{r}
+head(pointsTable)
+```
+
+```{r}
+ggplot(pointsTable, aes(x = total_1)) +
+  geom_boxplot()
+```
+
+```{r}
+median(pointsTable$total_1)
+median(pointsTable$avg_1)
+mean(pointsTable$avg_1)
+```
+
+```{r}
+median(pointsTable$total_2)
+median(pointsTable$avg_2)
+mean(pointsTable$avg_2)
+```
+
+```{r}
+median(pointsTable$total_3)
+median(pointsTable$avg_3)
+mean(pointsTable$avg_3)
+```
+
+```{r}
+pointsDF <- data.frame(points = c(1,2,3), median_proportion = c(median(pointsTable$avg_1), median(pointsTable$avg_2), median(pointsTable$avg_3)), median_total = c(median(pointsTable$total_1), median(pointsTable$total_2), median(pointsTable$total_3)))
+```
+
+```{r}
+pointsDF
+```
+
+```{r}
+play_by_play %>% filter(!(is.na(points_attempted))) %>% select(text, points_attempted)
+```
+
